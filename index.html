@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Vote Checklist</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#14161f;--mu:#6b7080;--bd:#e4e6ee;--ac:#5b5bf0;--ac2:#e8e8ff;--ok:#16a34a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1117;--card:#181b25;--tx:#eef0f6;--mu:#9aa0b4;--bd:#2a2e3d;--ac:#8b8bff;--ac2:#25264a;--ok:#4ade80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1117;--card:#181b25;--tx:#eef0f6;--mu:#9aa0b4;--bd:#2a2e3d;--ac:#8b8bff;--ac2:#25264a;--ok:#4ade80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:4px 0 2px}h2{font-size:1.05rem;margin:0 0 10px}
+.sub{color:var(--mu);font-size:.9rem;margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;text-align:center}
+.stat b{display:block;font-size:1.6rem;color:var(--ac);transition:transform .2s}
+.stat b.pop{transform:scale(1.25)}
+.stat span{font-size:.75rem;color:var(--mu)}
+.row{display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:12px;cursor:pointer;border-bottom:1px solid var(--bd);transition:background .15s}
+.row:last-child{border-bottom:0}.row:hover{background:var(--ac2)}
+.row input{width:22px;height:22px;accent-color:var(--ac);flex:none;cursor:pointer}
+.row .n{flex:1;font-weight:500}.row.on .n{color:var(--mu);text-decoration:line-through}
+.row .c{font-size:.8rem;color:var(--mu);font-variant-numeric:tabular-nums}
+.bar{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:.9rem}
+.bar .l{width:44%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .t{flex:1;height:10px;background:var(--ac2);border-radius:6px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--ac);border-radius:6px;transition:width .4s}
+.bar .v{width:34px;text-align:right;font-variant-numeric:tabular-nums;color:var(--mu)}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+.cell{aspect-ratio:1;border-radius:8px;border:2px solid transparent;background:var(--ac2);color:var(--tx);font-size:.7rem;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.cell.sel{border-color:var(--tx)}
+.hint{font-size:.78rem;color:var(--mu);margin-top:8px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+button.b{background:var(--ac2);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:9px 14px;font:inherit;font-size:.9rem;cursor:pointer}
+button.b.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.b.act{border-color:var(--ac)}
+textarea{width:100%;height:140px;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:10px;font:12px/1.4 ui-monospace,Menlo,monospace}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.saved{color:var(--ok);font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Daily Vote Checklist</h1>
+  <p class="sub">Tick what you voted for. Everything updates instantly and is saved on this device.</p>
+
+  <div class="stats">
+    <div class="stat"><b id="sTotal">0</b><span>Total votes</span></div>
+    <div class="stat"><b id="sDay">0/9</b><span id="sDayL">Today</span></div>
+    <div class="stat"><b id="sActive">0</b><span>Days active (30d)</span></div>
+  </div>
+
+  <section class="card">
+    <div class="top"><h2 id="listTitle">Today</h2><span class="saved" id="saved">Saved on device</span></div>
+    <div id="list"></div>
+    <div class="btns" style="margin-top:10px"><button class="b" id="reset">Reset today</button> <button class="b" id="back" hidden>Back to today</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Live standings (all time)</h2>
+    <div id="bars"></div>
+  </section>
+
+  <section class="card">
+    <h2>30-day voting history</h2>
+    <div class="grid" id="grid"></div>
+    <p class="hint">Each square is a day (oldest to newest) showing its vote count. Tap one to view or edit that day.</p>
+  </section>
+
+  <section class="card">
+    <h2>Export vote history</h2>
+    <div class="btns">
+      <button class="b act" id="fCsv">CSV</button>
+      <button class="b" id="fJson">JSON</button>
+      <button class="b p" id="copy">Copy</button>
+      <button class="b" id="dl">Save / Share</button>
+    </div>
+    <textarea id="out" readonly></textarea>
+    <p class="hint" id="msg">Save / Share tries a file save, then the share sheet. If neither works, use Copy and paste into Notes.</p>
+  </section>
+</main>
+
+<script>
+const ITEMS=["Zunio","Cleverbyte","Health & Gym","Reactivo (replacing Trading)","Offline AI (replacing Coding)","Content Farming","Random Instagram","E-commerce","Daily Planning"];
+const KEY="vote_history_v1";
+let data={},sel="",fmt="csv";
+try{data=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){data={}}
+const $=id=>document.getElementById(id);
+const ds=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>ds(new Date());
+sel=today();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data));$("saved").textContent="Saved on device"}catch(e){$("saved").textContent="Not saved (storage unavailable)"}}
+function days30(){const a=[];for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(ds(d))}return a}
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+let last=-1;
+function render(){
+  const all=Object.values(data),total=all.reduce((s,a)=>s+a.length,0);
+  const d30=days30(),active=d30.filter(d=>(data[d]||[]).length).length;
+  const cur=data[sel]||[],isToday=sel===today();
+  const setN=(id,v)=>{const e=$(id);if(e.textContent!==String(v)){e.textContent=v;e.classList.add("pop");setTimeout(()=>e.classList.remove("pop"),180)}};
+  setN("sTotal",total);setN("sDay",cur.length+"/"+ITEMS.length);setN("sActive",active);
+  $("sDayL").textContent=isToday?"Today":sel;
+  $("listTitle").textContent=isToday?"Today\u2019s checklist":"Editing "+sel;
+  $("back").hidden=isToday;
+  clearTimeout(rt);rt=null;$("reset").textContent=isToday?"Reset today":"Reset "+sel;
+  $("list").innerHTML=ITEMS.map((n,i)=>{
+    const on=cur.includes(i),c=all.filter(a=>a.includes(i)).length;
+    return `<label class="row${on?" on":""}"><input type="checkbox" data-i="${i}"${on?" checked":""}><span class="n">${esc(n)}</span><span class="c">${c} votes</span></label>`}).join("");
+  const counts=ITEMS.map((_,i)=>all.filter(a=>a.includes(i)).length),mx=Math.max(1,...counts);
+  $("bars").innerHTML=ITEMS.map((n,i)=>({n,c:counts[i]})).sort((a,b)=>b.c-a.c).map(o=>
+    `<div class="bar"><span class="l">${esc(o.n)}</span><span class="t"><i style="width:${o.c/mx*100}%"></i></span><span class="v">${o.c}</span></div>`).join("");
+  $("grid").innerHTML=d30.map(d=>{
+    const n=(data[d]||[]).length,a=n?(0.25+0.75*n/ITEMS.length):0;
+    return `<button class="cell${d===sel?" sel":""}" data-d="${d}" title="${d}: ${n} votes" style="${n?`background:color-mix(in srgb,var(--ac) ${Math.round(a*100)}%,transparent);color:#fff`:""}">${n||""}</button>`}).join("");
+  renderExport();
+}
+function exportText(){
+  const dates=Object.keys(data).sort();
+  if(fmt==="json")return JSON.stringify({exported:new Date().toISOString(),totalVotes:Object.values(data).reduce((s,a)=>s+a.length,0),history:dates.map(d=>({date:d,votes:data[d].map(i=>ITEMS[i])}))},null,2);
+  const rows=["date,item"];
+  dates.forEach(d=>data[d].forEach(i=>rows.push(d+',"'+ITEMS[i].replace(/"/g,'""')+'"')));
+  return rows.join("\n");
+}
+function renderExport(){$("out").value=exportText();$("fCsv").classList.toggle("act",fmt==="csv");$("fJson").classList.toggle("act",fmt==="json")}
+$("list").addEventListener("change",e=>{
+  const i=+e.target.dataset.i;if(isNaN(i))return;
+  const a=new Set(data[sel]||[]);e.target.checked?a.add(i):a.delete(i);
+  if(a.size)data[sel]=[...a].sort((x,y)=>x-y);else delete data[sel];
+  save();pushDb();render();
+});
+$("grid").addEventListener("click",e=>{const d=e.target.closest("[data-d]");if(d){sel=d.dataset.d;render();window.scrollTo({top:0,behavior:"smooth"})}});
+let rt=null;
+$("reset").onclick=()=>{
+  if(!(data[sel]||[]).length){$("reset").textContent="Nothing to reset";rt=setTimeout(render,1500);return}
+  if(!rt){$("reset").textContent="Tap again to confirm";rt=setTimeout(render,3000);return}
+  clearTimeout(rt);rt=null;delete data[sel];save();pushDb();render();
+};
+$("back").onclick=()=>{sel=today();render()};
+$("fCsv").onclick=()=>{fmt="csv";renderExport()};
+$("fJson").onclick=()=>{fmt="json";renderExport()};
+$("copy").onclick=async()=>{
+  const t=exportText();
+  try{await navigator.clipboard.writeText(t);$("msg").textContent="Copied to clipboard."}
+  catch(e){$("out").select();try{document.execCommand("copy");$("msg").textContent="Copied to clipboard."}catch(_){$("msg").textContent="Select the text above and copy it manually."}}
+};
+$("dl").onclick=async()=>{
+  const t=exportText(),name="vote-history."+fmt;
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/plain"}));a.download=name;document.body.appendChild(a);a.click();a.remove();$("msg").textContent="File downloaded.";return}catch(e){}
+  try{
+    const f=new File([t],name,{type:"text/plain"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"Vote history"});$("msg").textContent="Shared.";return}
+    if(navigator.share){await navigator.share({title:"Vote history",text:t});$("msg").textContent="Shared.";return}
+  }catch(e){if(e&&e.name==="AbortError"){$("msg").textContent="Cancelled.";return}}
+  $("out").removeAttribute("readonly");$("out").focus();$("out").select();$("out").setSelectionRange(0,t.length+1);
+  $("msg").textContent="File saving is blocked here. The text is selected: tap Copy, then paste it into Notes or a file.";
+};
+window.addEventListener("storage",e=>{if(e.key===KEY){try{data=JSON.parse(e.newValue||"{}")}catch(_){}render()}});
+let ref=null,tm=null;
+function merge(a,b){const o={};new Set([...Object.keys(a),...Object.keys(b)]).forEach(d=>{const u=[...new Set([...(a[d]||[]),...(b[d]||[])])].sort((x,y)=>x-y);if(u.length)o[d]=u});return o}
+function pushDb(){if(!ref)return;clearTimeout(tm);tm=setTimeout(()=>{ref.set({days:data,updated:Date.now()}).catch(()=>{})},400)}
+(async()=>{try{
+  const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+  if(!db||!user)return;
+  const id=await user.id();if(!id)return;
+  ref=db.collection("data/users/"+id).doc("history");
+  const s=await ref.get();
+  if(s.exists){data=merge(data,(s.data()||{}).days||{})}
+  save();render();pushDb();
+  $("saved").textContent="Saved on device and account";
+}catch(e){}})();
+render();
+</script>
+</body>
+</html>
